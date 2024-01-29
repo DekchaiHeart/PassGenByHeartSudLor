@@ -2,18 +2,25 @@
 export default {
   data() {
     return {
+      minPasswordLength: 4,
+      maxPasswordLength: 20,
       passwordLength: 8,
-      includeNumbers: false,
-      includeUppercase: false,
-      includeLowercase: false,
-      includeSpecialChars: false,
+      checkboxes: {
+        includeNumbers: { model: false, label: "Include Numbers" },
+        includeUppercase: { model: false, label: "Include Uppercase Letters" },
+        includeLowercase: { model: false, label: "Include Lowercase Letters" },
+        includeSpecialChars: {
+          model: false,
+          label: "Include Special Characters",
+        },
+      },
       generatedPassword: "",
-      passwordStrength: "Easy",
+      passwordStrengthIndex: 0,
+      strengthSegments: [1, 2, 3, 4], // Number of segments in the strength bar
     };
   },
   methods: {
     generatePassword() {
-      // Generate password based on settings
       const characters = [
         "abcdefghijklmnopqrstuvwxyz",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -23,9 +30,9 @@ export default {
 
       let allChars = characters[0];
 
-      if (this.includeUppercase) allChars += characters[1];
-      if (this.includeNumbers) allChars += characters[2];
-      if (this.includeSpecialChars) allChars += characters[3];
+      if (this.checkboxes.includeUppercase.model) allChars += characters[1];
+      if (this.checkboxes.includeNumbers.model) allChars += characters[2];
+      if (this.checkboxes.includeSpecialChars.model) allChars += characters[3];
 
       let password = "";
       for (let i = 0; i < this.passwordLength; i++) {
@@ -37,76 +44,80 @@ export default {
       this.calculatePasswordStrength();
     },
     calculatePasswordStrength() {
-      // Check password strength
       if (this.passwordLength < 6) {
-        this.passwordStrength = "Easy";
-      } else if (
-        this.includeUppercase &&
-        this.includeLowercase &&
-        this.includeNumbers &&
-        this.includeSpecialChars
-      ) {
-        this.passwordStrength = "Super Strong";
-      } else if (
-        (this.includeUppercase && this.includeLowercase) ||
-        this.includeNumbers ||
-        this.includeSpecialChars
-      ) {
-        this.passwordStrength = "Strong";
+        this.passwordStrengthIndex = 1;
       } else {
-        this.passwordStrength = "Medium";
+        let strengthCount = 0;
+        strengthCount += this.checkboxes.includeUppercase.model ? 1 : 0;
+        strengthCount += this.checkboxes.includeLowercase.model ? 1 : 0;
+        strengthCount += this.checkboxes.includeNumbers.model ? 1 : 0;
+        strengthCount += this.checkboxes.includeSpecialChars.model ? 1 : 0;
+
+        this.passwordStrengthIndex = strengthCount;
       }
+    },
+    copyToClipboard() {
+      const textarea = document.createElement("textarea");
+      textarea.value = this.generatedPassword;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      alert("Password copied to clipboard!");
     },
   },
 };
 </script>
 
 <template>
-  <div>
-    <p>
-      Password: {{ generatedPassword }}
-      <button @click="copyToClipboard">Copy</button>
-    </p>
-  </div>
   <div id="app">
-    <label for="passwordLength">Password Length: </label>
+    <div>
+      <p>Password: {{ generatedPassword }}</p>
+      <button @click="copyToClipboard" v-show="generatedPassword">Copy</button>
+    </div>
+
+    <label :for="passwordLength">Password Length: </label>
     <input
       type="range"
-      id="passwordLength"
+      :id="passwordLength"
       v-model="passwordLength"
-      min="4"
-      max="20"
+      :min="minPasswordLength"
+      :max="maxPasswordLength"
     />
     {{ passwordLength }}
 
-    <div>
-      <input type="checkbox" id="includeNumbers" v-model="includeNumbers" />
-      <label for="includeNumbers">Include Numbers</label>
+    <div v-for="(checkbox, label) in checkboxes" :key="label">
+      <input type="checkbox" :id="label" v-model="checkbox.model" />
+      <label :for="label">{{ checkbox.label }}</label>
+    </div>
+    <div class="strength-bar">
+      <div
+        v-for="(segment, index) in strengthSegments"
+        :key="index"
+        class="bar-segment"
+        :class="{ selected: index < passwordStrengthIndex }"
+      ></div>
     </div>
 
-    <div>
-      <input type="checkbox" id="includeUppercase" v-model="includeUppercase" />
-      <label for="includeUppercase">Include Uppercase Letters</label>
-    </div>
-
-    <div>
-      <input type="checkbox" id="includeLowercase" v-model="includeLowercase" />
-      <label for="includeLowercase">Include Lowercase Letters</label>
-    </div>
-
-    <div>
-      <input
-        type="checkbox"
-        id="includeSpecialChars"
-        v-model="includeSpecialChars"
-      />
-      <label for="includeSpecialChars">Include Special Characters</label>
-    </div>
-    <div>
-      <p>Password Strength {{ passwordStrength }}</p>
-    </div>
     <button @click="generatePassword">Generate Password</button>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.strength-bar {
+  display: flex;
+  height: 20px;
+  margin-top: 10px;
+}
+
+.bar-segment {
+  flex: 1;
+  background-color: #e0e0e0;
+  margin-right: 2px;
+}
+
+.bar-segment.selected {
+  background-color: #51baee;
+}
+</style>
