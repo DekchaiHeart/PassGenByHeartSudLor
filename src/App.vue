@@ -1,26 +1,52 @@
 <script>
+import { ref, computed, watch } from "vue";
+
 export default {
-  data() {
-    return {
-      minPasswordLength: 4,
-      maxPasswordLength: 20,
-      passwordLength: 8,
-      checkboxes: {
-        includeNumbers: { model: false, label: "Include Numbers" },
-        includeUppercase: { model: false, label: "Include Uppercase Letters" },
-        includeLowercase: { model: false, label: "Include Lowercase Letters" },
-        includeSpecialChars: {
-          model: false,
-          label: "Include Special Characters",
-        },
+  setup() {
+    // State
+    const minPasswordLength = 4;
+    const maxPasswordLength = 20;
+
+    const passwordLength = ref(8);
+    const checkboxes = {
+      includeNumbers: { model: ref(false), label: "Include Numbers" },
+      includeUppercase: {
+        model: ref(false),
+        label: "Include Uppercase Letters",
       },
-      generatedPassword: "",
-      passwordStrengthIndex: 0,
-      strengthSegments: [1, 2, 3, 4], // Number of segments in the strength bar
+      includeLowercase: {
+        model: ref(false),
+        label: "Include Lowercase Letters",
+      },
+      includeSpecialChars: {
+        model: ref(false),
+        label: "Include Special Characters",
+      },
     };
-  },
-  methods: {
-    generatePassword() {
+
+    const generatedPassword = ref("");
+    const passwordStrengthIndex = ref(0);
+    const strengthSegments = [1, 2, 3, 4];
+
+    // Computed
+    const computedId = computed(() => `passwordLength-${passwordLength.value}`);
+
+    // Watchers
+    watch(
+      [
+        passwordLength,
+        checkboxes.includeUppercase.model,
+        checkboxes.includeLowercase.model,
+        checkboxes.includeNumbers.model,
+        checkboxes.includeSpecialChars.model,
+      ],
+      () => {
+        generatePassword();
+      }
+    );
+
+    // Methods
+    const generatePassword = () => {
       const characters = [
         "abcdefghijklmnopqrstuvwxyz",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
@@ -30,42 +56,57 @@ export default {
 
       let allChars = characters[0];
 
-      if (this.checkboxes.includeUppercase.model) allChars += characters[1];
-      if (this.checkboxes.includeNumbers.model) allChars += characters[2];
-      if (this.checkboxes.includeSpecialChars.model) allChars += characters[3];
+      if (checkboxes.includeUppercase.model.value) allChars += characters[1];
+      if (checkboxes.includeNumbers.model.value) allChars += characters[2];
+      if (checkboxes.includeSpecialChars.model.value) allChars += characters[3];
 
       let password = "";
-      for (let i = 0; i < this.passwordLength; i++) {
+      for (let i = 0; i < passwordLength.value; i++) {
         const randomIndex = Math.floor(Math.random() * allChars.length);
         password += allChars[randomIndex];
       }
 
-      this.generatedPassword = password;
-      this.calculatePasswordStrength();
-    },
-    calculatePasswordStrength() {
-      if (this.passwordLength < 6) {
-        this.passwordStrengthIndex = 1;
+      generatedPassword.value = password;
+      calculatePasswordStrength();
+    };
+
+    const calculatePasswordStrength = () => {
+      if (passwordLength.value < 6) {
+        passwordStrengthIndex.value = 1;
       } else {
         let strengthCount = 0;
-        strengthCount += this.checkboxes.includeUppercase.model ? 1 : 0;
-        strengthCount += this.checkboxes.includeLowercase.model ? 1 : 0;
-        strengthCount += this.checkboxes.includeNumbers.model ? 1 : 0;
-        strengthCount += this.checkboxes.includeSpecialChars.model ? 1 : 0;
+        strengthCount += checkboxes.includeUppercase.model.value ? 1 : 0;
+        strengthCount += checkboxes.includeLowercase.model.value ? 1 : 0;
+        strengthCount += checkboxes.includeNumbers.model.value ? 1 : 0;
+        strengthCount += checkboxes.includeSpecialChars.model.value ? 1 : 0;
 
-        this.passwordStrengthIndex = strengthCount;
+        passwordStrengthIndex.value = strengthCount;
       }
-    },
-    copyToClipboard() {
+    };
+
+    const copyToClipboard = () => {
       const textarea = document.createElement("textarea");
-      textarea.value = this.generatedPassword;
+      textarea.value = generatedPassword.value;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand("copy");
       document.body.removeChild(textarea);
 
       alert("Password copied to clipboard!");
-    },
+    };
+
+    return {
+      minPasswordLength,
+      maxPasswordLength,
+      passwordLength,
+      checkboxes,
+      generatedPassword,
+      passwordStrengthIndex,
+      strengthSegments,
+      computedId,
+      generatePassword,
+      copyToClipboard,
+    };
   },
 };
 </script>
@@ -74,13 +115,13 @@ export default {
   <div id="app">
     <div>
       <p>Password: {{ generatedPassword }}</p>
-      <button @click="copyToClipboard" v-show="generatedPassword">Copy</button>
+      <button @click="copyToClipboard" v-if="generatedPassword">Copy</button>
     </div>
 
-    <label :for="passwordLength">Password Length: </label>
+    <label :for="computedId">Password Length: </label>
     <input
       type="range"
-      :id="passwordLength"
+      :id="computedId"
       v-model="passwordLength"
       :min="minPasswordLength"
       :max="maxPasswordLength"
@@ -91,6 +132,7 @@ export default {
       <input type="checkbox" :id="label" v-model="checkbox.model" />
       <label :for="label">{{ checkbox.label }}</label>
     </div>
+
     <div class="strength-bar">
       <div
         v-for="(segment, index) in strengthSegments"
@@ -100,7 +142,9 @@ export default {
       ></div>
     </div>
 
-    <button @click="generatePassword">Generate Password</button>
+    <button @click="generatePassword" v-show="!generatedPassword">
+      Generate Password
+    </button>
   </div>
 </template>
 
