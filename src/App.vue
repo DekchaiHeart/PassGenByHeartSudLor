@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, watch } from "vue";
+import NavButton from "./assets/NavButton.vue";
 
-const minPasswordLength = 4;
+const minPasswordLength = 8;
 const maxPasswordLength = 20;
 
 const passwordLength = ref(8);
@@ -28,8 +29,8 @@ const generatedPassword = ref("");
 const passwordStrengthIndex = ref(0);
 const strengthSegments = [1, 2, 3, 4];
 
-// Computed
 const computedId = computed(() => `passwordLength-${passwordLength.value}`);
+const passwordHistory = ref([]);
 
 watch(
   [
@@ -43,6 +44,12 @@ watch(
     generatePassword();
   }
 );
+
+let selectedPasswordLength = passwordLength.value;
+
+const handlePasswordLengthChange = (event) => {
+  selectedPasswordLength = parseInt(event.target.value);
+};
 
 const generatePassword = () => {
   const characters = [
@@ -59,13 +66,27 @@ const generatePassword = () => {
   if (checkboxes.includeSpecialChars.model.value) allChars += characters[3];
 
   let password = "";
-  for (let i = 0; i < passwordLength.value; i++) {
+  for (let i = 0; i < selectedPasswordLength; i++) {
     const randomIndex = Math.floor(Math.random() * allChars.length);
     password += allChars[randomIndex];
   }
 
   generatedPassword.value = password;
   calculatePasswordStrength();
+  addToHistory();
+};
+
+const addToHistory = () => {
+  if (generatedPassword.value) {
+    const historyItem = {
+      number: passwordHistory.length + 1,
+      password: generatedPassword.value,
+      length: selectedPasswordLength,
+      strength: passwordStrengthIndex.value,
+    };
+
+    passwordHistory.value.unshift(historyItem);
+  }
 };
 
 const calculatePasswordStrength = () => {
@@ -95,16 +116,16 @@ const copyToClipboard = () => {
 </script>
 
 <template>
-  <A href="./"></A>
   <div id="app">
+    <!-- ปุ่ม History -->
     <div class="drawer">
       <input id="my-drawer" type="checkbox" class="drawer-toggle" />
       <div class="drawer-content">
-        <!-- Page content here -->
         <label for="my-drawer" class="btn btn-primary drawer-button"
           ><NavButton
         /></label>
       </div>
+      <!-- แถบ History -->
       <div class="drawer-side">
         <label
           for="my-drawer"
@@ -112,12 +133,55 @@ const copyToClipboard = () => {
           class="drawer-overlay"
         ></label>
         <ul class="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
-          <!-- Sidebar content here -->
-          <li><a>Sidebar Item 1</a></li>
-          <li><a>Sidebar Item 2</a></li>
+          <table>
+            <tr>
+              <h2>Password History</h2>
+            </tr>
+            <tr>
+              <th>No.</th>
+              <th>Password</th>
+              <th>Length</th>
+              <th>Strength</th>
+            </tr>
+            <tr>
+              <td>
+                <li
+                  v-for="historyItem in passwordHistory"
+                  :key="historyItem.number"
+                >
+                  <p>{{ historyItem.number }}</p>
+                </li>
+              </td>
+              <td>
+                <li
+                  v-for="historyItem in passwordHistory"
+                  :key="historyItem.number"
+                >
+                  <p>{{ historyItem.password }}</p>
+                </li>
+              </td>
+              <td>
+                <li
+                  v-for="historyItem in passwordHistory"
+                  :key="historyItem.number"
+                >
+                  <p>{{ historyItem.length }}</p>
+                </li>
+              </td>
+              <td>
+                <li
+                  v-for="historyItem in passwordHistory"
+                  :key="historyItem.number"
+                >
+                  <p>{{ historyItem.strength }}/4</p>
+                </li>
+              </td>
+            </tr>
+          </table>
         </ul>
       </div>
     </div>
+
     <!-- Theme-Swap -->
     <label class="swap swap-rotate">
       <input type="checkbox" class="theme-controller" value="dark" />
@@ -146,19 +210,20 @@ const copyToClipboard = () => {
     <!-- ฟังชั่น -->
     <div>
       <p>Password: {{ generatedPassword }}</p>
-      <button @click="copyToClipboard" v-if="generatedPassword">Copy</button>
+      <button @click="copyToClipboard">Copy</button>
     </div>
 
     <!-- ความยาวรหัส -->
     <label :for="computedId">Password Length: </label>
+    {{ passwordLength }}
     <input
       type="range"
       :id="computedId"
       v-model="passwordLength"
       :min="minPasswordLength"
       :max="maxPasswordLength"
+      class="block mb-2 text-sm font-medium text-gray-900 cursor-pointer dark:text-white"
     />
-    {{ passwordLength }}
 
     <!-- เช็คบ็อกตามความต้องการ -->
     <div
@@ -188,7 +253,12 @@ const copyToClipboard = () => {
     </div>
 
     <!-- ปุ่มกดสุ่มรหัส -->
-    <button @click="generatePassword">Generate Password</button>
+    <button
+      class="w-full btn btn-primary text-base-100"
+      @click="generatePassword"
+    >
+      Generate Password
+    </button>
   </div>
 </template>
 
