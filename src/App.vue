@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import NavButton from "./assets/NavButton.vue";
+import CopyIcon from "./assets/CopyIcon.vue";
+import ExclamationIcon from "./assets/ExclamationIcon.vue";
+import Popup from "./assets/Popup.vue";
 
-const minPasswordLength = 8;
-const maxPasswordLength = 20;
-
+let error = true;
+const borderError = 'class="" ';
 const passwordLength = ref(8);
 const checkboxes = {
   includeNumbers: {
@@ -27,6 +29,7 @@ const checkboxes = {
 
 const generatedPassword = ref("");
 const passwordStrengthIndex = ref(0);
+const passwordStrengthText = ref("Password Strength");
 const strengthSegments = [1, 2, 3, 4];
 
 const computedId = computed(() => `passwordLength-${passwordLength.value}`);
@@ -59,14 +62,16 @@ const generatePassword = () => {
     "!@#$%^&*()_+[]{}|;:,.<>?",
   ];
 
-  let allChars = characters[0];
+  let allChars = "";
 
+  if (checkboxes.includeLowercase.model.value) allChars += characters[0];
   if (checkboxes.includeUppercase.model.value) allChars += characters[1];
   if (checkboxes.includeNumbers.model.value) allChars += characters[2];
   if (checkboxes.includeSpecialChars.model.value) allChars += characters[3];
 
   let password = "";
-  for (let i = 0; i < selectedPasswordLength; i++) {
+
+  for (let i = 0; i < passwordLength.value; i++) {
     const randomIndex = Math.floor(Math.random() * allChars.length);
     password += allChars[randomIndex];
   }
@@ -88,19 +93,41 @@ const addToHistory = () => {
     passwordHistory.value.unshift(historyItem);
   }
 };
-
+let strengthCount = 0;
 const calculatePasswordStrength = () => {
+  strengthCount = 0;
   if (passwordLength.value < 6) {
     passwordStrengthIndex.value = 1;
   } else {
-    let strengthCount = 0;
     strengthCount += checkboxes.includeUppercase.model.value ? 1 : 0;
     strengthCount += checkboxes.includeLowercase.model.value ? 1 : 0;
     strengthCount += checkboxes.includeNumbers.model.value ? 1 : 0;
     strengthCount += checkboxes.includeSpecialChars.model.value ? 1 : 0;
 
-    passwordStrengthIndex.value = strengthCount;
+    switch (strengthCount) {
+      case passwordStrengthIndex === 0:
+        passwordStrengthText.value = "Password Strength";
+        error = true;
+        break;
+      case passwordStrengthIndex === 1:
+        passwordStrengthText.value = "Weak";
+        break;
+      case passwordStrengthIndex === 2:
+        passwordStrengthText.value = "Medium";
+        break;
+      case passwordStrengthIndex === 3:
+        passwordStrengthText.value = "Strong";
+        break;
+      case passwordStrengthIndex === 4:
+        passwordStrengthText.value = "Very Strong";
+        break;
+      default:
+        passwordStrengthText.value = "Password Strength";
+        error = true;
+        break;
+    }
   }
+  error = strengthCount === 0;
 };
 
 const copyToClipboard = () => {
@@ -113,10 +140,25 @@ const copyToClipboard = () => {
 
   alert("Copied to clipboard!");
 };
+
+const passwordStrength = computed(() => {
+  switch (strengthCount) {
+    case 4:
+      return "Very Strong";
+    case 3:
+      return "Strong";
+    case 2:
+      return "Medium";
+    case 1:
+      return "Weak";
+    default:
+      return "Password Strength";
+  }
+});
 </script>
 
 <template>
-  <div id="app">
+  <div id="app" class="border ml-5">
     <!-- ปุ่ม History -->
     <div class="drawer">
       <input id="my-drawer" type="checkbox" class="drawer-toggle" />
@@ -208,9 +250,12 @@ const copyToClipboard = () => {
     </label>
 
     <!-- ฟังชั่น -->
-    <div>
-      <p>Password: {{ generatedPassword }}</p>
-      <button @click="copyToClipboard">Copy</button>
+    <div class="flex">
+      <p v-if="generatedPassword">{{ generatedPassword }}</p>
+      <p v-else>P4SSWORD</p>
+      <button class="" @click="copyToClipboard">
+        <CopyIcon />
+      </button>
     </div>
 
     <!-- ความยาวรหัส -->
@@ -220,14 +265,14 @@ const copyToClipboard = () => {
       type="range"
       :id="computedId"
       v-model="passwordLength"
-      :min="minPasswordLength"
-      :max="maxPasswordLength"
+      :min="8"
+      :max="20"
       class="block mb-2 text-sm font-medium text-gray-900 cursor-pointer dark:text-white"
     />
 
     <!-- เช็คบ็อกตามความต้องการ -->
     <div
-      class="form-control flex items-center p-2"
+      class="flex items-center p-2"
       v-for="(checkbox, label) in checkboxes"
       :key="label"
     >
@@ -243,7 +288,8 @@ const copyToClipboard = () => {
     </div>
 
     <!-- เกรดความแข็งแรงรหัส -->
-    <div class="strength-bar">
+    <div>{{ passwordStrength.value }}</div>
+    <div class="strength-bar flex">
       <div
         v-for="(segment, index) in strengthSegments"
         :key="index"
@@ -251,7 +297,10 @@ const copyToClipboard = () => {
         :class="{ selected: index < passwordStrengthIndex }"
       ></div>
     </div>
-
+    <!-- โชว์ Error -->
+    <div v-if="(error = true)" class="my-1 dark:text-error">
+      <p>Please select at least one option.</p>
+    </div>
     <!-- ปุ่มกดสุ่มรหัส -->
     <button
       class="w-full btn btn-primary text-base-100"
